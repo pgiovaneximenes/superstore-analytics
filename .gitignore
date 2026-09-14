@@ -1,0 +1,65 @@
+# =====================================================================
+# Dados
+# =====================================================================
+# O CSV de origem não vai para o repositório: está disponível
+# publicamente no Kaggle (link no README) e arquivos de dados não
+# pertencem ao controle de versão.
+*.csv
+*.xlsx
+*.xls
+*.zip
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.bak
+
+# =====================================================================
+# Power BI
+# =====================================================================
+# .pbix é binário e cresce rápido; versioná-lo polui o histórico sem
+# permitir comparar alterações. .pbit (template, sem dados) pode ser
+# versionado se fizer sentido — remova a linha abaixo nesse caso.
+*.pbix
+*.pbit
+*.pbids
+
+# =====================================================================
+# Credenciais
+# =====================================================================
+# Nunca versionar string de conexão, usuário ou senha.
+.env
+.env.local
+*.pgpass
+credentials.json
+config.local.*
+
+# =====================================================================
+# DBeaver
+# =====================================================================
+.dbeaver/
+*.dbeaver-data-sources.xml
+
+# =====================================================================
+# Editores e IDEs
+# =====================================================================
+.vscode/
+.idea/
+*.code-workspace
+
+# =====================================================================
+# Sistema operacional
+# =====================================================================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# =====================================================================
+# Temporários
+# =====================================================================
+*.tmp
+*.temp
+*.log
+~$*
