@@ -112,6 +112,8 @@ Inferência automática de tipo é conveniente e não é confiável. Definir o s
     ├── 01_schema.sql      -- criação da tabela
     ├── 02_validacao.sql   -- checks pós-importação
     └── 03_consultas.sql   -- consultas analíticas
+        ├── 04_diagnostico_modelo.sql  -- verifica chaves candidatas antes de modelar
+    └── 05_modelo_estrela.sql      -- schema dw: dimensões e fato
 ```
 
 ### Ordem de execução
@@ -120,9 +122,35 @@ Inferência automática de tipo é conveniente e não é confiável. Definir o s
 2. Importar `superstore.csv` pelo DBeaver, mapeando na tabela **existente**
 3. `02_validacao.sql` — confere tipos, volume, período e ausência de nulos
 4. `03_consultas.sql` — análise
+5. `04_diagnostico_modelo.sql` — confere grão, unicidade de IDs e nulos
+6. `05_modelo_estrela.sql` — cria o schema `dw` (recria do zero a cada execução)
 
 ---
 
+## Modelo estrela
+
+O `superstore_raw` permanece intacto. O modelo dimensional fica no schema `dw`, criado por `05_modelo_estrela.sql`. Grão da fato: um item de pedido.
+
+| Tabela            | Tipo      | Chave primária             | Observação                                                        |
+| ----------------- | --------- | -------------------------- | ----------------------------------------------------------------- |
+| `fato_vendas`     | fato      | `row_id`                   | métricas de venda; `order_id` como dimensão degenerada            |
+| `dim_cliente`     | dimensão  | `customer_id`              | somente atributos do cliente                                      |
+| `dim_produto`     | dimensão  | `produto_key` (substituta) | chave substituta porque `product_id` não identifica sozinho       |
+| `dim_localizacao` | dimensão  | `localizacao_key`          | local de entrega da transação                                     |
+| `dim_envio`       | dimensão  | `envio_key`                | modalidade de envio e prioridade do pedido                        |
+| `dim_data`        | dimensão  | `data_key` (AAAAMMDD)      | usada duas vezes na fato: data do pedido e data de envio          |
+
+### Decisões
+
+**Geografia fora da dimensão de cliente.** O mesmo `customer_id` aparece com locais de entrega diferentes. Colocar cidade e país em `dim_cliente` geraria mais de uma linha por cliente e quebraria a relação 1:N com a fato. O local ficou como atributo da transação, via `localizacao_key`.
+
+**DDL explícito, carga depois.** Mesma lição da reimportação: as tabelas são criadas com tipos definidos e populadas com `INSERT ... SELECT`, sem `CREATE TABLE AS`.
+
+**Falha em vez de perda silenciosa.** A carga da fato usa `LEFT JOIN` com colunas de chave `NOT NULL`. Se algum join não casar, o `INSERT` acusa erro em vez de descartar linhas.
+
+### Diagrama
+
+![Diagrama do modelo estrela](docs/modelo_estrela.png)
 ## Consultas
 
 | # | Pergunta |
@@ -154,8 +182,8 @@ O que torna esse achado interessante é menos o resultado e mais o caminho: part
 ## Próximos passos
 
 - Consultas com window functions (`ROW_NUMBER`, `LAG`, running total)
-- Normalização em modelo estrela: dimensões de cliente, produto e geografia separadas da fato de vendas
-- Dashboard em Power BI
+- Reescrever consultas do `03_consultas.sql` sobre o modelo `dw`
+- Dashboard em Power BI sobre o schema `dw`
 
 A normalização já tem uma armadilha identificada: o mesmo `customer_id` aparece associado a cidades diferentes, porque o cliente comprou com entrega em locais distintos. Uma dimensão de cliente que inclua geografia resulta em mais de uma linha por cliente, quebrando o relacionamento 1:N. O caminho provável é tratar cidade, estado e país como atributos da transação, ou criar uma dimensão geográfica separada.
 
