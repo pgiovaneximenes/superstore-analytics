@@ -1,8 +1,8 @@
-# Global Superstore — Análise SQL
+# Global Superstore: Análise SQL e Power BI
 
 Projeto de estudo em SQL sobre o dataset **Global Superstore**, obtido no [Kaggle](https://www.kaggle.com/datasets/fatihilhan/global-superstore-dataset).
 
-A proposta foi trabalhar com uma base de vendas de tamanho razoável do carregamento até a análise, em vez de consultas isoladas sobre tabelas de exemplo. O repositório deve evoluir com consultas mais complexas e, na sequência, com um dashboard em Power BI sobre a mesma base.
+A proposta foi trabalhar com uma base de vendas de tamanho razoável do carregamento até a análise, em vez de consultas isoladas sobre tabelas de exemplo. O repositório cobre o caminho completo, do carregamento ao dashboard em Power BI.
 
 ---
 
@@ -28,6 +28,7 @@ O arquivo também é totalmente desnormalizado: cliente, produto, geografia e tr
 - PostgreSQL 18.4 (local, Windows x86_64)
 - DBeaver Community
 - Origem: `superstore.csv`
+- Power BI Desktop
 
 ---
 
@@ -108,14 +109,18 @@ Inferência automática de tipo é conveniente e não é confiável. Definir o s
 ```
 .
 ├── README.md
-└── sql/
-    ├── 01_schema.sql      -- criação da tabela
-    ├── 02_validacao.sql   -- checks pós-importação
-    ├── 03_consultas.sql   -- consultas analíticas
-    ├── 03_consultas_estrela.sql   -- consultas analíticas em dw  
-    ├── 04_diagnostico_modelo.sql  -- verifica chaves candidatas antes de modelar
-└── docs/
-    ├── 05_modelo_estrela.sql      -- schema dw: dimensões e fato
+├── sql/
+│   ├── 01_schema.sql
+│   ├── 02_validacao.sql
+│   ├── 03_consultas.sql          -- consultas sobre a tabela bruta (superstore_raw)
+│   ├── 03_consultas_estrela.sql  -- consultas sobre o modelo estrela (schema dw)
+│   ├── 04_diagnostico_modelo.sql
+│   └── 05_modelo_estrela.sql
+├── docs/
+│   └── modelo_estrela.png
+└── powerbi/
+    ├── superstore_dashboard.pbix
+    └── img/
 ```
 
 ### Ordem de execução
@@ -123,9 +128,10 @@ Inferência automática de tipo é conveniente e não é confiável. Definir o s
 1. `01_schema.sql` — cria a tabela vazia com os tipos corretos
 2. Importar `superstore.csv` pelo DBeaver, mapeando na tabela **existente**
 3. `02_validacao.sql` — confere tipos, volume, período e ausência de nulos
-4. `03_consultas.sql` — análise
+4. `03_consultas.sql` — análise sobre a tabela bruta
 5. `04_diagnostico_modelo.sql` — confere grão, unicidade de IDs e nulos
 6. `05_modelo_estrela.sql` — cria o schema `dw` (recria do zero a cada execução)
+7. `03_consultas_estrela.sql` — consultas sobre o modelo estrela (exige o schema `dw` criado no passo 6)
 
 ---
 
@@ -142,9 +148,12 @@ O `superstore_raw` permanece intacto. O modelo dimensional fica no schema `dw`, 
 | `dim_envio`       | dimensão  | `envio_key`                | modalidade de envio e prioridade do pedido                        |
 | `dim_data`        | dimensão  | `data_key` (AAAAMMDD)      | usada duas vezes na fato: data do pedido e data de envio          |
 
-### Decisões
 
-**Geografia fora da dimensão de cliente.** O mesmo `customer_id` aparece com locais de entrega diferentes. Colocar cidade e país em `dim_cliente` geraria mais de uma linha por cliente e quebraria a relação 1:N com a fato. O local ficou como atributo da transação, via `localizacao_key`.
+### Diagrama
+
+![Diagrama do modelo estrela](docs/modelo_estrela.png)
+
+### Decisões
 
 **DDL explícito, carga depois.** Mesma lição da reimportação: as tabelas são criadas com tipos definidos e populadas com `INSERT ... SELECT`, sem `CREATE TABLE AS`.
 
@@ -152,10 +161,16 @@ O `superstore_raw` permanece intacto. O modelo dimensional fica no schema `dw`, 
 
 **Geografia fora da dimensão de cliente.** O mesmo `customer_id` aparece associado a locais de entrega diferentes: 4.442 clientes têm pedidos entregues em mais de uma combinação de país, estado e cidade. Uma `dim_cliente` com geografia teria mais de uma linha por cliente e quebraria a relação 1:N com a fato. A solução foi tratar o local como atributo da transação: `dim_localizacao` é uma dimensão própria, referenciada pela fato via `localizacao_key`.
 
-### Diagrama
+---
 
-![Diagrama do modelo estrela](docs/modelo_estrela.png)
 ## Consultas
+
+O repositório tem dois arquivos de consultas:
+
+- `03_consultas.sql` consulta a `superstore_raw`, a tabela desnormalizada. É o ponto de partida, e aqui o filtro e a agregação acontecem sobre a base inteira.
+- `03_consultas_estrela.sql` consulta o schema `dw`, juntando a `fato_vendas` às dimensões. 
+
+A tabela abaixo lista as consultas:
 
 | # | Pergunta |
 |---|---|
@@ -183,10 +198,39 @@ O que torna esse achado interessante é menos o resultado e mais o caminho: part
 
 ---
 
+
+## Dashboard Power BI
+
+Arquivo: `powerbi/superstore_dashboard.pbix`. Conecta ao PostgreSQL (schema `dw`, modo Import). Valores em dólar.
+
+![Visão executiva](powerbi/img/pagina1_visao_executiva.png)
+
+### Modelo
+
+- Cinco dimensões ligadas à `fato_vendas` em relacionamentos 1:N, com filtro da dimensão para a fato.
+- - `dim_data` tem dois relacionamentos com a `fato_vendas`: um ativo, pela data do pedido, e um inativo, reservado para análises por data de envio. Todas as medidas usam a data do pedido.
+- A `superstore_raw` não entra no modelo.
+
+### Medidas (DAX)
+
+`Total Vendas`, `Lucro Total`, `Margem %`, `Qtd Pedidos`, `Ticket Médio`, `Vendas Ano Anterior` e `Crescimento YoY %`. O YoY só é confiável com um ano selecionado.
+
+### Página 1: visão executiva
+
+Segmentações (ano, região, segmento), cinco KPIs, vendas e lucro por mês, vendas por mercado, vendas por categoria e lucro por subcategoria (deficitárias em vermelho).
+
+### Como abrir
+
+O arquivo aponta para `localhost`. Para reproduzir o banco, siga a [ordem de execução](#ordem-de-execução), que inclui a importação do CSV entre os scripts `01` e `02`, e termine no `05_modelo_estrela.sql`, que cria o schema `dw`.
+
+Depois, no Power BI, ajuste servidor, banco (`superstore`) e credenciais em **Transformar dados → Configurações da fonte de dados**.
+
+---
+
 ## Próximos passos
 
 - Consultas com window functions (`ROW_NUMBER`, `LAG`, running total)
-- Dashboard em Power BI sobre o schema `dw`
+- Páginas 2 e 3 do dashboard (produtos e rentabilidade; geografia e clientes)
 
 ---
 
