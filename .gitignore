@@ -20,7 +20,7 @@
 # .pbix é binário e cresce rápido; versioná-lo polui o histórico sem
 # permitir comparar alterações. .pbit (template, sem dados) pode ser
 # versionado se fizer sentido — remova a linha abaixo nesse caso.
-*.pbix
+
 *.pbit
 *.pbids
 
