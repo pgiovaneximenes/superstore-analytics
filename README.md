@@ -111,9 +111,10 @@ Inferência automática de tipo é conveniente e não é confiável. Definir o s
 └── sql/
     ├── 01_schema.sql      -- criação da tabela
     ├── 02_validacao.sql   -- checks pós-importação
-    └── 03_consultas.sql   -- consultas analíticas
-        ├── 04_diagnostico_modelo.sql  -- verifica chaves candidatas antes de modelar
-    └── 05_modelo_estrela.sql      -- schema dw: dimensões e fato
+    ├── 03_consultas.sql   -- consultas analíticas
+    ├── 04_diagnostico_modelo.sql  -- verifica chaves candidatas antes de modelar
+└── docs/
+    ├── 05_modelo_estrela.sql      -- schema dw: dimensões e fato
 ```
 
 ### Ordem de execução
