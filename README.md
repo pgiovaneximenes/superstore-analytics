@@ -112,6 +112,7 @@ Inferência automática de tipo é conveniente e não é confiável. Definir o s
     ├── 01_schema.sql      -- criação da tabela
     ├── 02_validacao.sql   -- checks pós-importação
     ├── 03_consultas.sql   -- consultas analíticas
+    ├── 03_consultas_estrela.sql   -- consultas analíticas em dw  
     ├── 04_diagnostico_modelo.sql  -- verifica chaves candidatas antes de modelar
 └── docs/
     ├── 05_modelo_estrela.sql      -- schema dw: dimensões e fato
@@ -149,6 +150,8 @@ O `superstore_raw` permanece intacto. O modelo dimensional fica no schema `dw`, 
 
 **Falha em vez de perda silenciosa.** A carga da fato usa `LEFT JOIN` com colunas de chave `NOT NULL`. Se algum join não casar, o `INSERT` acusa erro em vez de descartar linhas.
 
+**Geografia fora da dimensão de cliente.** O mesmo `customer_id` aparece associado a locais de entrega diferentes: 4.442 clientes têm pedidos entregues em mais de uma combinação de país, estado e cidade. Uma `dim_cliente` com geografia teria mais de uma linha por cliente e quebraria a relação 1:N com a fato. A solução foi tratar o local como atributo da transação: `dim_localizacao` é uma dimensão própria, referenciada pela fato via `localizacao_key`.
+
 ### Diagrama
 
 ![Diagrama do modelo estrela](docs/modelo_estrela.png)
@@ -183,10 +186,7 @@ O que torna esse achado interessante é menos o resultado e mais o caminho: part
 ## Próximos passos
 
 - Consultas com window functions (`ROW_NUMBER`, `LAG`, running total)
-- Reescrever consultas do `03_consultas.sql` sobre o modelo `dw`
 - Dashboard em Power BI sobre o schema `dw`
-
-A normalização já tem uma armadilha identificada: o mesmo `customer_id` aparece associado a cidades diferentes, porque o cliente comprou com entrega em locais distintos. Uma dimensão de cliente que inclua geografia resulta em mais de uma linha por cliente, quebrando o relacionamento 1:N. O caminho provável é tratar cidade, estado e país como atributos da transação, ou criar uma dimensão geográfica separada.
 
 ---
 
